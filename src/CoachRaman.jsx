@@ -1,11 +1,202 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Settings, Play, Pause, RotateCcw, Heart, Brain, Users, Award, Mic, MicOff, Volume2, VolumeX, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+const LocalizationContext = React.createContext();
+
+const LocalizationProvider = ({ children }) => {
+  const [currentLanguage, setCurrentLanguage] = useState('en-US');
+  const [translations, setTranslations] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Hardcoded English translations for testing
+  const englishTranslations = {
+    "app": {
+      "title": "Raman",
+      "subtitle": "Learning to communicate with someone who has dementia"
+    },
+    "setup": {
+      "greeting": "Hello. I'm Raman.",
+      "description": "I have dementia... but I'm still here. And I want to help you connect with people like me.",
+      "audioSetupSubtitle": "Let's set up your audio experience so you can hear how I really speak.",
+      "testSoundButton": "Test Sound",
+      "testSoundSuccess": "Audio Working!",
+      "microphoneAvailable": "Microphone Available",
+      "microphoneAvailableDesc": "You can type or speak during lessons",
+      "microphoneUnavailable": "Typing Only",
+      "microphoneUnavailableDesc": "You can type your responses",
+      "startButton": "Start Learning with Raman",
+      "testAudioPhrase": "Can you hear this?",
+      "apiKeyTitle": "Choose your API key option:",
+      "apiKeyInfo": "Education mode is free! I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙",
+      "apiKeyEmbedded": "Use demo API key (Recommended)",
+      "apiKeyEmbeddedDesc": "Quick start - no setup required",
+      "apiKeyOwn": "Use my own API key",
+      "apiKeyOwnDesc": "For unlimited usage",
+      "apiKeyPlaceholder": "sk-..."
+    },
+    "welcome": {
+      "greeting": "Hello. I'm Raman.",
+      "description": "I have dementia, but I'm still here. I want to help you connect with people like me.",
+      "audioSetupTitle": "Let's Set Up Your Audio",
+      "audioSetupDescription": "You'll need to hear how I really speak to understand my experience",
+      "testSoundTitle": "Test Sound",
+      "testSoundDescription": "Hear how Raman speaks",
+      "testSoundButton": "Test Audio",
+      "audioExperienceTitle": "Audio Experience",
+      "audioExperienceOn": "ON",
+      "audioExperienceOff": "OFF",
+      "modes": {
+        "education": {
+          "title": "Education Mode",
+          "description": "Watch and listen as Raman teaches you about dementia communication",
+          "learnThrough": "Learn through:",
+          "features": [
+            "Real dementia speech patterns",
+            "Visual thinking demonstrations",
+            "Interactive lessons",
+            "No pressure - just observe"
+          ],
+          "button": "Start Learning"
+        }
+      },
+      "apiKeyTitle": "Choose your API key option:",
+      "apiKeyInfo": "Education mode is free! I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙",
+      "apiKeyEmbedded": "Use demo API key (Recommended)",
+      "apiKeyEmbeddedDesc": "Quick start - no setup required",
+      "apiKeyOwn": "Use my own API key",
+      "apiKeyOwnDesc": "For unlimited usage"
+    },
+    "education": {
+      "title": "Education Mode",
+      "progressLabel": "Progress",
+      "lessonCounter": "Lesson {current} of {total}",
+      "listenButton": "Listen to Raman",
+      "speakingStatus": "Speaking...",
+      "nextButton": "Next Lesson",
+      "previousButton": "Previous",
+      "completeButton": "Complete Education",
+      "backToMenu": "Back to Menu",
+      "stopSpeaking": "Stop Speaking",
+      "speechTiming": "Speech: 7x slower • Pauses: 4x longer",
+      "lessons": [
+        {
+          "title": "Meet Raman",
+          "content": "Hello. I'm Raman. I have dementia. I want to help you understand me.",
+          "thinking": "Let me introduce myself slowly...",
+          "emotion": "calm"
+        },
+        {
+          "title": "Why I Need Time",
+          "content": "When you talk to me. I need time. My brain works slower now. Please wait for me.",
+          "thinking": "Explaining why I'm slow...",
+          "emotion": "thoughtful"
+        },
+        {
+          "title": "One Thing at a Time",
+          "content": "Too many instructions. I get confused. Tell me one thing. Then wait.",
+          "thinking": "Trying to explain overload...",
+          "emotion": "overwhelmed"
+        },
+        {
+          "title": "Don't Interrupt My Thoughts",
+          "content": "Sometimes I stop talking. but I'm still thinking. Please don't jump in. Let me finish.",
+          "thinking": "Finding the right words...",
+          "emotion": "focused"
+        },
+        {
+          "title": "How Words Make Me Feel",
+          "content": "When you say 'Don't forget your medicine'. I feel bad. Instead say, 'Here's your medicine'. I feel good. Same message. Different feeling.",
+          "thinking": "Sharing my emotions...",
+          "emotion": "emotional"
+        }
+      ]
+    },
+    "emotions": {
+      "calm": "😌 Calm",
+      "thoughtful": "🤔 Thoughtful",
+      "overwhelmed": "😵 Overwhelmed",
+      "focused": "🎯 Focused",
+      "emotional": "💙 Sharing feelings"
+    },
+    "timer": {
+      "speaking": "Speaking...",
+      "pause": "Pause...",
+      "total": "Total:",
+      "complete": "Complete"
+    },
+    "thinking": {
+      "speaking": "Speaking...",
+      "thinking": "Thinking..."
+    }
+  };
+
+  const getNestedValue = (obj, key) => {
+    return key.split('.').reduce((o, k) => o?.[k], obj);
+  };
+
+  const t = (key, params = {}) => {
+    const value = getNestedValue(translations, key);
+    if (!value) {
+      console.warn(`Translation key "${key}" not found`);
+      return key;
+    }
+    
+    if (typeof value === 'string' && Object.keys(params).length > 0) {
+      return Object.keys(params).reduce((str, param) => {
+        return str.replace(new RegExp(`{${param}}`, 'g'), params[param]);
+      }, value);
+    }
+    
+    return value;
+  };
+
+useEffect(() => {
+  const loadTranslations = async () => {
+    try {
+      // Load from en-US.json file instead of hardcoded object
+      
+      const response = await fetch('locales/en-US.json');
+      const translationData = await response.json();
+      console.log('✅ SUCCESS: Loaded from JSON file');
+      console.log('📊 JSON data:', translationData);
+      console.log('📚 Lessons from JSON:', translationData?.education?.lessons);
+      setTranslations(translationData);
+    } catch (error) {
+      console.error('Failed to load translations:', error);
+      // Fallback to hardcoded translations if file fails
+      setTranslations(englishTranslations);
+    }
+    setIsLoading(false);
+  };
+  
+  loadTranslations();
+}, []);
+
+  return (
+    <LocalizationContext.Provider value={{ t, currentLanguage, isLoading, translations }}>
+      {children}
+    </LocalizationContext.Provider>
+  );
+};
+
+const useLocalization = () => {
+  const context = React.useContext(LocalizationContext);
+  if (!context) {
+    throw new Error('useLocalization must be used within LocalizationProvider');
+  }
+  return context;
+};
 
 const CoachRaman = () => {
+  const { t } = useLocalization();
+  
   const [currentScreen, setCurrentScreen] = useState('setup');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentInsight, setCurrentInsight] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [useEmbeddedKey, setUseEmbeddedKey] = useState(true);
   const [setupComplete, setSetupComplete] = useState(false);
@@ -20,7 +211,6 @@ const CoachRaman = () => {
   const [ramanThinking, setRamanThinking] = useState('');
   const [emotionState, setEmotionState] = useState('calm');
   
-  // Brain Timer states
   const [brainTimer, setBrainTimer] = useState(0);
   const [brainTimerActive, setBrainTimerActive] = useState(false);
   const [totalCommunicationTime, setTotalCommunicationTime] = useState(0);
@@ -158,7 +348,7 @@ const CoachRaman = () => {
           return;
         }
         
-        setRamanThinking('Speaking...');
+        setRamanThinking(t('thinking.speaking'));
         
         const utterance = new SpeechSynthesisUtterance(phrase);
         utterance.rate = 0.15;
@@ -170,7 +360,7 @@ const CoachRaman = () => {
         }
 
         utterance.onend = () => {
-          setRamanThinking('Thinking...');
+          setRamanThinking(t('thinking.thinking'));
           if (isEducation) setBrainTimerActive(false);
           
           if (index < phrases.length - 1) {
@@ -225,7 +415,7 @@ const CoachRaman = () => {
   };
 
   const testAudio = () => {
-    speakText("Can you hear this? This is how Raman speaks.");
+    speakText(t('setup.testAudioPhrase'));
     setAudioTest(true);
   };
 
@@ -240,41 +430,13 @@ const CoachRaman = () => {
     return useEmbeddedKey ? EMBEDDED_API_KEY : apiKey;
   };
 
-  const educationLessons = [
-    {
-      title: "Meet Raman",
-      content: "Hello. I'm Raman. I have dementia. I want to help you understand me.",
-      thinking: "Let me introduce myself slowly...",
-      emotion: "calm"
-    },
-    {
-      title: "Why I Need Time",
-      content: "When you talk to me. I need time. My brain works slower now. Please wait for me.",
-      thinking: "Explaining why I'm slow...",
-      emotion: "thoughtful"
-    },
-    {
-      title: "One Thing at a Time", 
-      content: "Too many instructions. I get confused. Tell me one thing. Then wait.",
-      thinking: "Trying to explain overload...",
-      emotion: "overwhelmed"
-    },
-    {
-      title: "Don't Interrupt My Thoughts",
-      content: "Sometimes I stop talking. but I'm still thinking. Please don't jump in. Let me finish.",
-      thinking: "Finding the right words...",
-      emotion: "focused"
-    },
-    {
-      title: "How Words Make Me Feel",
-      content: "When you say 'Don't forget your medicine'. I feel bad. Instead say, 'Here's your medicine'. I feel good. Same message. Different feeling.",
-      thinking: "Sharing my emotions...",
-      emotion: "emotional"
-    }
-  ];
+  // Get lessons from translations
+  const educationLessons = t('education.lessons') || [];
 
   const startEducationLesson = (lessonIndex) => {
     const lesson = educationLessons[lessonIndex];
+    if (!lesson) return;
+    
     setEducationStep(lessonIndex);
     setRamanThinking(lesson.thinking);
     
@@ -283,9 +445,13 @@ const CoachRaman = () => {
     setTimerPhase('');
     setBrainTimerActive(false);
     
+    /*
     setTimeout(() => {
       speakText(lesson.content, lesson.emotion, true);
     }, 1000);
+      */
+
+
   };
 
   const nextEducationStep = () => {
@@ -303,7 +469,7 @@ const CoachRaman = () => {
           <div className="bg-white border-2 border-gray-300 rounded-lg p-2 shadow-lg">
             <div className="flex items-center gap-1">
               <Brain size={20} className="text-blue-600" />
-              <span className="text-xs font-medium text-gray-800">Total:</span>
+              <span className="text-xs font-medium text-gray-800">{t('timer.total')}</span>
               <span className="text-xs font-mono text-blue-600 min-w-[15px]">
                 {totalCommunicationTime}s
               </span>
@@ -320,7 +486,7 @@ const CoachRaman = () => {
           <div className="flex items-center gap-1">
             <Brain size={20} className="text-blue-600" />
             <span className="text-xs font-medium text-gray-800">
-              {timerPhase === 'speaking' ? 'Speaking...' : 'Pause...'}
+              {timerPhase === 'speaking' ? t('timer.speaking') : t('timer.pause')}
             </span>
             <span className="text-xs font-mono text-blue-600 min-w-[15px]">
               {brainTimer}s
@@ -334,14 +500,62 @@ const CoachRaman = () => {
     return null;
   };
 
+  const EnhancedTakeaway = ({ lesson }) => {
+  if (!lesson || !lesson.insights || lesson.insights.length === 0) {
+    return (
+      <div className="text-sm text-purple-600 font-medium mb-4">
+        {t('education.speechTiming')}
+      </div>
+    );
+  }
+
+  const currentInsightData = lesson.insights[currentInsight];
+
+  return (
+    <div 
+      className="bg-purple-50 rounded-lg p-3 cursor-pointer hover:bg-purple-100 transition-colors border border-purple-200 mb-4"
+      onClick={() => {
+        const lesson = educationLessons[educationStep];
+        if (lesson && lesson.insights) {
+          setCurrentInsight(prev => (prev + 1) % lesson.insights.length);
+        }
+      }}
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-xl">{currentInsightData.icon}</span>
+        <span className="text-sm font-medium text-purple-800 flex-1">
+          {currentInsightData.text}
+        </span>
+      </div>
+      
+      <div className="flex justify-center gap-2">
+        {lesson.insights.map((_, index) => (
+          <button
+            key={index}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentInsight(index);
+            }}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              index === currentInsight 
+                ? 'bg-purple-600' 
+                : 'bg-purple-300 hover:bg-purple-400'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
   const SetupScreen = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
           <Heart className="text-blue-500 mx-auto mb-4" size={48} />
-          <h1 className="text-3xl font-bold text-teal-700 mb-2">Hello. I'm Raman.</h1>
-          <p className="text-gray-600 mb-4">I have dementia... but I'm still here. And I want to help you connect with people like me.</p>
-          <p className="text-sm text-gray-500">Let's set up your audio experience so you can hear how I really speak.</p>
+          <h1 className="text-3xl font-bold text-teal-700 mb-2">{t('setup.greeting')}</h1>
+          <p className="text-gray-600 mb-4">{t('setup.description')}</p>
+          <p className="text-sm text-gray-500">{t('setup.audioSetupSubtitle')}</p>
         </div>
 
         <div className="space-y-6 mb-8">
@@ -365,23 +579,23 @@ const CoachRaman = () => {
               }`}
             >
               {audioTest ? <CheckCircle size={20} /> : <Volume2 size={20} />}
-              {audioTest ? 'Audio Working!' : 'Test Sound'}
+              {audioTest ? t('setup.testSoundSuccess') : t('setup.testSoundButton')}
             </button>
             
             {speechSupported ? (
               <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-100 text-green-700 border border-green-200 rounded-md">
                 <CheckCircle size={20} />
                 <div className="text-center">
-                  <div className="font-medium">Microphone Available</div>
-                  <div className="text-xs">You can type or speak during lessons</div>
+                  <div className="font-medium">{t('setup.microphoneAvailable')}</div>
+                  <div className="text-xs">{t('setup.microphoneAvailableDesc')}</div>
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-100 text-blue-700 border border-blue-200 rounded-md">
                 <MessageCircle size={20} />
                 <div className="text-center">
-                  <div className="font-medium">Typing Only</div>
-                  <div className="text-xs">You can type your responses</div>
+                  <div className="font-medium">{t('setup.microphoneUnavailable')}</div>
+                  <div className="text-xs">{t('setup.microphoneUnavailableDesc')}</div>
                 </div>
               </div>
             )}
@@ -396,14 +610,14 @@ const CoachRaman = () => {
           disabled={!audioTest}
           className="w-full px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors mb-8"
         >
-          Start Learning with Raman
+          {t('setup.startButton')}
         </button>
 
         <div className="bg-white/60 backdrop-blur-md rounded-xl p-6 shadow-lg border border-white/20">
-          <h3 className="font-semibold text-gray-800 mb-2">Choose your API key option:</h3>
+          <h3 className="font-semibold text-gray-800 mb-2">{t('setup.apiKeyTitle')}</h3>
           <div className="bg-blue-50/70 backdrop-blur-sm border border-blue-200/50 rounded-md p-3 mb-4">
             <p className="text-xs text-blue-800">
-             Education mode is free!  I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙
+              {t('setup.apiKeyInfo')}
             </p>
           </div>
           <div className="space-y-3">
@@ -415,8 +629,8 @@ const CoachRaman = () => {
                 className="mr-3"
               />
               <div>
-                <div className="font-medium">Use demo API key (Recommended)</div>
-                <div className="text-sm text-gray-500">Quick start - no setup required</div>
+                <div className="font-medium">{t('setup.apiKeyEmbedded')}</div>
+                <div className="text-sm text-gray-500">{t('setup.apiKeyEmbeddedDesc')}</div>
               </div>
             </label>
             
@@ -428,8 +642,8 @@ const CoachRaman = () => {
                 className="mr-3"
               />
               <div>
-                <div className="font-medium">Use my own API key</div>
-                <div className="text-sm text-gray-500">For unlimited usage</div>
+                <div className="font-medium">{t('setup.apiKeyOwn')}</div>
+                <div className="text-sm text-gray-500">{t('setup.apiKeyOwnDesc')}</div>
               </div>
             </label>
           </div>
@@ -440,7 +654,7 @@ const CoachRaman = () => {
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder={t('setup.apiKeyPlaceholder')}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/70 backdrop-blur-sm"
               />
             </div>
@@ -454,16 +668,19 @@ const CoachRaman = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-6">
+            <Heart className="text-blue-500 mr-3" size={48} />
+            <h1 className="text-2xl font-medium text-gray-800">{t('app.title')}</h1>
+          </div>
+          <p className="text-xl text-gray-600 mb-4">
+            {t('app.subtitle')}
+          </p>
           <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-center mb-2">
-                <Heart className="text-blue-500 mr-3" size={32} />
-                <h2 className="text-2xl font-semibold" style={{ color: '#5A7A4D' }}>Hello. I'm Raman.</h2>
-            </div>
-            <p className="text-gray-600">I have dementia, but I'm still here. I want to help you connect with people like me.</p>
-            </div>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">{t('welcome.greeting')}</h2>
+            <p className="text-gray-600">{t('welcome.description')}</p>
+          </div>
         </div>
 
-       
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <div 
             onClick={() => {
@@ -472,209 +689,51 @@ const CoachRaman = () => {
               setEducationStep(0);
             }}
             className="bg-white/25 backdrop-blur-xl rounded-3xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 cursor-pointer transform hover:scale-105 hover:-translate-y-2"
-            style={{
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              borderTop: '1px solid rgba(255, 255, 255, 0.6)',
-              borderLeft: '1px solid rgba(255, 255, 255, 0.6)',
-              borderRight: '1px solid rgba(255, 255, 255, 0.2)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-            }}
           >
             <Brain className="text-blue-600 mb-4" size={32} />
-            <h3 className="text-xl font-semibold mb-2 text-gray-800">Education Mode</h3>
+            <h3 className="text-xl font-semibold mb-2 text-gray-800">{t('welcome.modes.education.title')}</h3>
             <p className="text-gray-700 mb-4">
-              Watch and listen as Raman teaches you about dementia communication
+              {t('welcome.modes.education.description')}
             </p>
-            <div className="bg-white/40 backdrop-blur-sm p-3 rounded-2xl text-sm"
-                 style={{
-                   border: '1px solid rgba(255, 255, 255, 0.3)',
-                   borderTop: '1px solid rgba(255, 255, 255, 0.5)',
-                   borderLeft: '1px solid rgba(255, 255, 255, 0.5)'
-                 }}>
-              <strong className="text-gray-800">Learn through:</strong>
+            <div className="bg-white/40 backdrop-blur-sm p-3 rounded-2xl text-sm">
+              <strong className="text-gray-800">{t('welcome.modes.education.learnThrough')}</strong>
               <ul className="mt-2 space-y-1 text-gray-700">
-                <li>• Real dementia speech patterns</li>
-                <li>• Visual thinking demonstrations</li>
-                <li>• Interactive lessons</li>
-                <li>• No pressure - just observe</li>
+                {t('welcome.modes.education.features').map((feature, index) => (
+                  <li key={index}>• {feature}</li>
+                ))}
               </ul>
             </div>
-            <div className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-2xl font-medium text-center hover:bg-blue-700 transition-colors"
-                 style={{
-                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                 }}>
-              Start Learning
+            <div className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-2xl font-medium text-center hover:bg-blue-700 transition-colors">
+              {t('welcome.modes.education.button')}
             </div>
           </div>
 
-          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed"
-               style={{
-                 border: '1px solid rgba(255, 255, 255, 0.2)',
-                 borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-                 borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
-                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-               }}>
+          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed">
             <Users className="text-gray-400 mb-4" size={32} />
             <h3 className="text-xl font-semibold mb-2 text-gray-500">Training Mode</h3>
             <p className="text-gray-500 mb-4">
               Coming soon - Practice conversations with guidance
             </p>
-            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl text-sm"
-                 style={{
-                   border: '1px solid rgba(255, 255, 255, 0.2)'
-                 }}>
-              <strong className="text-gray-400">Will include:</strong>
-              <ul className="mt-2 space-y-1 text-gray-400">
-                <li>• Real-time feedback</li>
-                <li>• Guided scenarios</li>
-                <li>• Mistake corrections</li>
-                <li>• Safe learning space</li>
-              </ul>
-            </div>
           </div>
 
-          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed"
-               style={{
-                 border: '1px solid rgba(255, 255, 255, 0.2)',
-                 borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-                 borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
-                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-               }}>
+          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed">
             <MessageCircle className="text-gray-400 mb-4" size={32} />
             <h3 className="text-xl font-semibold mb-2 text-gray-500">Live Chat Mode</h3>
             <p className="text-gray-500 mb-4">
               Coming soon - Open conversation with Raman
             </p>
-            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl text-sm"
-                 style={{
-                   border: '1px solid rgba(255, 255, 255, 0.2)'
-                 }}>
-              <strong className="text-gray-400">Will include:</strong>
-              <ul className="mt-2 space-y-1 text-gray-400">
-                <li>• Specific conversations</li>
-                <li>• Real situations</li>
-                <li>• Ongoing support</li>
-                <li>• Applied learning</li>
-              </ul>
-            </div>
           </div>
         </div>
 
-         {/* Audio Setup Card - Single card with all components */}
-        <div className="text-center mb-8">
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg opacity-70"
-            style={{
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-            }}>
-          
-            <h3 className="text-lg font-medium text-gray-600 mb-3">Audio Setup</h3>
-            <p className="text-gray-700 mb-8">You'll need to hear how I really speak to understand my experience</p>
-            
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Audio Setup */}
-              <div className="text-center">
-                <Settings className="mx-auto mb-4 text-gray-700" size={30} />
-                <p className="text-gray-600 text-sm mb-4">Configure speakers & microphone</p>
-                <button
-                  onClick={() => setCurrentScreen('setup')}
-                  className="px-4 py-2 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl hover:bg-white/70 transition-all duration-300 font-medium"
-                  style={{
-                    border: '2px solid rgba(123, 154, 109, 0.7)',
-                    boxShadow: '0 4px 12px rgba(123, 154, 109, 0.2)'
-                  }}
-                >
-                  Setup Audio
-                </button>
-              </div>
-
-              {/* Test Sound */}
-              <div className="text-center">
-                <Volume2 className="mx-auto mb-4 text-blue-600" size={30} />
-                <p className="text-gray-600 text-sm mb-4">Hear how Raman speaks</p>
-                <button
-                  onClick={() => speakText("Can you hear this? This is how Raman speaks.")}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 font-medium"
-                  style={{
-                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                  }}
-                >
-                  Test Audio
-                </button>
-              </div>
-
-              {/* Microphone Status */}
-              <div className="text-center">
-                {speechSupported ? (
-                  <>
-                    <CheckCircle className="mx-auto mb-4 text-green-600" size={30} />
-                    <p className="text-gray-600 text-sm mb-4">You can speak during lessons</p>
-                    <div className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-medium"
-                         style={{
-                           border: '2px solid rgba(34, 197, 94, 0.5)'
-                         }}>
-                      ✓ Microphone Ready
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="mx-auto mb-4 text-gray-500" size={40} />
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Typing Only</h4>
-                    <p className="text-gray-600 text-sm mb-4">You can type responses</p>
-                    <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-medium"
-                         style={{
-                           border: '2px solid rgba(156, 163, 175, 0.5)'
-                         }}>
-                      No Mic
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Audio Experience Toggle */}
-            <div className="mt-8 pt-6 border-t-2 border-sage-200/50">
-              <div className="flex items-center justify-center gap-4">
-                <Volume2 className={`${voiceEnabled ? 'text-green-600' : 'text-gray-400'}`} size={24} />
-                <span className="text-lg font-medium text-gray-800">Audio Experience</span>
-                <input
-                  type="checkbox"
-                  checked={voiceEnabled}
-                  onChange={(e) => setVoiceEnabled(e.target.checked)}
-                  className="w-6 h-6 rounded"
-                  style={{
-                    accentColor: '#7B9A6D'
-                  }}
-                />
-                <span className={`text-sm font-medium ${voiceEnabled ? 'text-green-600' : 'text-gray-500'}`}>
-                  {voiceEnabled ? 'ON' : 'OFF'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-        <div className="bg-orange-50/25 backdrop-blur-xl rounded-3xl p-6 shadow-xl"
-             style={{
-               
-                boxShadow: '0 8px 32px rgba(255, 165, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-             }}>
-          <h3 className="font-semibold text-gray-500 mb-2">Choose your API key option:</h3>
-          <div className="bg-gray-100 rounded-2xl p-3 mb-4 opacity-60 cursor-not-allowed">
-               
+        <div className="bg-orange-50/25 backdrop-blur-xl rounded-3xl p-6 shadow-xl">
+          <h3 className="font-semibold text-gray-800 mb-2">{t('welcome.apiKeyTitle')}</h3>
+          <div className="bg-blue-50/40 backdrop-blur-sm rounded-2xl p-3 mb-4">
             <p className="text-xs text-blue-800">
-             Education mode is free!  I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙
+              {t('welcome.apiKeyInfo')}
             </p>
           </div>
           <div className="space-y-3">
-            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
-                   style={{
-                     border: '1px solid rgba(255, 255, 255, 0.3)',
-                     borderTop: '1px solid rgba(255, 255, 255, 0.4)',
-                     borderLeft: '1px solid rgba(255, 255, 255, 0.4)',
-                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-                   }}>
+            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm">
               <input
                 type="radio"
                 checked={useEmbeddedKey}
@@ -682,18 +741,12 @@ const CoachRaman = () => {
                 className="mr-3"
               />
               <div>
-                <div className="font-medium text-gray-800">Use demo API key (Recommended)</div>
-                <div className="text-sm text-gray-600">Quick start - no setup required</div>
+                <div className="font-medium text-gray-800">{t('welcome.apiKeyEmbedded')}</div>
+                <div className="text-sm text-gray-600">{t('welcome.apiKeyEmbeddedDesc')}</div>
               </div>
             </label>
             
-            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
-                   style={{
-                     border: '1px solid rgba(255, 255, 255, 0.3)',
-                     borderTop: '1px solid rgba(255, 255, 255, 0.4)',
-                     borderLeft: '1px solid rgba(255, 255, 255, 0.4)',
-                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-                   }}>
+            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm">
               <input
                 type="radio"
                 checked={!useEmbeddedKey}
@@ -701,8 +754,8 @@ const CoachRaman = () => {
                 className="mr-3"
               />
               <div>
-                <div className="font-medium text-gray-800">Use my own API key</div>
-                <div className="text-sm text-gray-600">For unlimited usage</div>
+                <div className="font-medium text-gray-800">{t('welcome.apiKeyOwn')}</div>
+                <div className="text-sm text-gray-600">{t('welcome.apiKeyOwnDesc')}</div>
               </div>
             </label>
           </div>
@@ -715,11 +768,6 @@ const CoachRaman = () => {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk-..."
                 className="w-full px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 bg-white/40 backdrop-blur-sm"
-                style={{
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.4)',
-                  borderLeft: '1px solid rgba(255, 255, 255, 0.4)'
-                }}
               />
             </div>
           )}
@@ -731,6 +779,10 @@ const CoachRaman = () => {
   const EducationScreen = () => {
     const currentLesson = educationLessons[educationStep];
     
+    if (!currentLesson) {
+      return <div>No lesson available</div>;
+    }
+    
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <div className="bg-white shadow-sm border-b px-4 py-3">
@@ -738,8 +790,11 @@ const CoachRaman = () => {
             <div className="flex items-center">
               <Brain className="text-blue-500 mr-3" size={24} />
               <div>
-                <h1 className="font-semibold text-gray-800">Education Mode</h1>
-                <p className="text-sm text-gray-500">Lesson {educationStep + 1} of {educationLessons.length}</p>
+                <h1 className="font-semibold text-gray-800">{t('education.title')}</h1>
+                <p className="text-sm text-gray-500">{t('education.lessonCounter', { 
+                  current: educationStep + 1, 
+                  total: educationLessons.length 
+                })}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -747,7 +802,7 @@ const CoachRaman = () => {
                 <button
                   onClick={stopSpeaking}
                   className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md"
-                  title="Stop Speaking"
+                  title={t('education.stopSpeaking')}
                 >
                   <Pause size={20} />
                 </button>
@@ -756,7 +811,7 @@ const CoachRaman = () => {
                 onClick={() => setCurrentScreen('welcome')}
                 className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
               >
-                Back to Menu
+                {t('education.backToMenu')}
               </button>
             </div>
           </div>
@@ -767,7 +822,7 @@ const CoachRaman = () => {
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
               <div className="mb-6 sm:mb-8">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-500">Progress</span>
+                  <span className="text-sm font-medium text-gray-500">{t('education.progressLabel')}</span>
                   <span className="text-sm font-medium text-gray-500">
                     {educationStep + 1} / {educationLessons.length}
                   </span>
@@ -823,67 +878,76 @@ const CoachRaman = () => {
                   emotionState === 'focused' ? 'bg-green-100 text-green-800' :
                   emotionState === 'emotional' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
                 }`}>
-                  {emotionState === 'calm' && '😌 Calm'}
-                  {emotionState === 'thoughtful' && '🤔 Thoughtful'}
-                  {emotionState === 'overwhelmed' && '😵 Overwhelmed'}
-                  {emotionState === 'focused' && '🎯 Focused'}
-                  {emotionState === 'emotional' && '💙 Sharing feelings'}
+                  {t(`emotions.${emotionState}`)}
                 </div>
+               
                 
-                <div className="text-sm text-purple-600 font-medium">
-                  Speech: 7x slower • Pauses: 4x longer
-                </div>
-              </div>
+              
+
+              <EnhancedTakeaway lesson={currentLesson} />
+
 
               <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
                 <p className="text-lg sm:text-xl text-gray-800 leading-relaxed text-center">
                   {currentLesson.content}
                 </p>
               </div>
-
               <div className="space-y-4">
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => startEducationLesson(educationStep)}
-                    disabled={isSpeaking}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors text-lg font-medium"
-                  >
-                    <Volume2 size={24} />
-                    {isSpeaking ? 'Speaking...' : 'Listen to Raman'}
-                  </button>
-                </div>
-
-                <div className="flex gap-3 justify-center flex-wrap">
-                  {educationStep > 0 && (
-                    <button
-                      onClick={() => startEducationLesson(educationStep - 1)}
-                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
-                    >
-                      Previous
-                    </button>
-                  )}
-                  
-                  {educationStep < educationLessons.length - 1 ? (
-                    <button
-                      onClick={nextEducationStep}
-                      className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium"
-                    >
-                      Next Lesson
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setCurrentScreen('welcome')}
-                      className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium"
-                    >
-                      Complete Education
-                    </button>
-                  )}
-                </div>
-              </div>
+            {/* iOS-style Raman Control Buttons */}
+            <div className="flex justify-center gap-3">
+              <button
+              
+                onClick={() => speakText(educationLessons[educationStep].content, educationLessons[educationStep].emotion, true)}
+                disabled={isSpeaking}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 transition-all duration-200 text-sm font-medium shadow-sm"
+              >
+                <Volume2 size={16} />
+                Raman Speak
+              </button>
+              
+              <button
+                onClick={stopSpeaking}
+                disabled={!isSpeaking}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 disabled:opacity-50 transition-all duration-200 text-sm font-medium shadow-sm"
+              >
+                <VolumeX size={16} />
+                Raman Stop  
+              </button>
+            </div>
+            {/* Add this navigation section */}
+{/* Previous/Next buttons - iOS style like the others */}
+<div className="flex gap-3 justify-center">
+  {educationStep > 0 && (
+    <button
+      onClick={() => startEducationLesson(educationStep - 1)}
+      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-all duration-200 text-sm font-medium shadow-sm"
+    >
+      Previous
+    </button>
+  )}
+  
+  {educationStep < educationLessons.length - 1 ? (
+    <button
+      onClick={() => startEducationLesson(educationStep + 1)}
+      className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all duration-200 text-sm font-medium shadow-sm"
+    >
+      Next   
+    </button>
+  ) : (
+    <button
+      onClick={() => setCurrentScreen('welcome')}
+      className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all duration-200 text-sm font-medium shadow-sm"
+    >
+      Complete
+    </button>
+  )}
+</div>
             </div>
           </div>
         </div>
       </div>
+      </div>
+    </div>
     );
   };
 
@@ -896,4 +960,12 @@ const CoachRaman = () => {
   );
 };
 
-export default CoachRaman;
+const App = () => {
+  return (
+    <LocalizationProvider>
+      <CoachRaman />
+    </LocalizationProvider>
+  );
+};
+
+export default App;
