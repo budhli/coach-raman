@@ -1,0 +1,252 @@
+import { useState, useEffect, createContext, useContext } from 'react';
+
+const LocalizationContext = createContext();
+
+export const LocalizationProvider = ({ children }) => {
+  const [currentLanguage, setCurrentLanguage] = useState('en-US');
+  const [translations, setTranslations] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Hardcoded English translations for now (later we'll load from external files)
+  const englishTranslations = {
+    "app": {
+      "title": "Raman",
+      "subtitle": "Learning to communicate with someone who has dementia"
+    },
+    "setup": {
+      "greeting": "Hello. I'm Raman.",
+      "description": "I have dementia... but I'm still here. And I want to help you connect with people like me.",
+      "audioSetupSubtitle": "Let's set up your audio experience so you can hear how I really speak.",
+      "audioSetupTitle": "Audio Setup",
+      "audioSetupInstructions": "📱 Mobile: Turn up volume, allow microphone access\n💻 Computer: Check speakers/headphones, allow microphone",
+      "testSoundButton": "Test Sound",
+      "testSoundSuccess": "Audio Working!",
+      "microphoneAvailable": "Microphone Available",
+      "microphoneAvailableDesc": "You can type or speak during lessons",
+      "microphoneUnavailable": "Typing Only",
+      "microphoneUnavailableDesc": "You can type your responses",
+      "startButton": "Start Learning with Raman",
+      "testAudioPhrase": "Can you hear this? This is how Raman speaks.",
+      "apiKeyTitle": "Choose your API key option:",
+      "apiKeyInfo": "Education mode is free! I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙",
+      "apiKeyEmbedded": "Use demo API key (Recommended)",
+      "apiKeyEmbeddedDesc": "Quick start - no setup required",
+      "apiKeyOwn": "Use my own API key",
+      "apiKeyOwnDesc": "For unlimited usage",
+      "apiKeyPlaceholder": "sk-..."
+    },
+    "welcome": {
+      "greeting": "Hello. I'm Raman.",
+      "description": "I have dementia, but I'm still here. I want to help you connect with people like me.",
+      "audioSetupTitle": "Let's Set Up Your Audio",
+      "audioSetupDescription": "You'll need to hear how I really speak to understand my experience",
+      "audioSetupButton": "Setup Audio",
+      "testSoundTitle": "Test Sound",
+      "testSoundDescription": "Hear how Raman speaks",
+      "testSoundButton": "Test Audio",
+      "microphoneStatusTitle": "Microphone Available",
+      "microphoneStatusDescription": "You can speak during lessons",
+      "microphoneStatusReady": "✓ Ready",
+      "microphoneUnavailableTitle": "Typing Only",
+      "microphoneUnavailableDescription": "You can type responses",
+      "microphoneUnavailableStatus": "No Mic",
+      "audioExperienceTitle": "Audio Experience",
+      "audioExperienceOn": "ON",
+      "audioExperienceOff": "OFF",
+      "modes": {
+        "education": {
+          "title": "Education Mode",
+          "description": "Watch and listen as Raman teaches you about dementia communication",
+          "learnThrough": "Learn through:",
+          "features": [
+            "Real dementia speech patterns",
+            "Visual thinking demonstrations",
+            "Interactive lessons",
+            "No pressure - just observe"
+          ],
+          "button": "Start Learning"
+        },
+        "training": {
+          "title": "Training Mode",
+          "description": "Coming soon - Practice conversations with guidance",
+          "willInclude": "Will include:",
+          "features": [
+            "Real-time feedback",
+            "Guided scenarios",
+            "Mistake corrections",
+            "Safe learning space"
+          ]
+        },
+        "liveChat": {
+          "title": "Live Chat Mode",
+          "description": "Coming soon - Open conversation with Raman",
+          "willInclude": "Will include:",
+          "features": [
+            "Specific conversations",
+            "Real situations",
+            "Ongoing support",
+            "Applied learning"
+          ]
+        }
+      },
+      "apiKeyTitle": "Choose your API key option:",
+      "apiKeyInfo": "Education mode is free! I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙",
+      "apiKeyEmbedded": "Use demo API key (Recommended)",
+      "apiKeyEmbeddedDesc": "Quick start - no setup required",
+      "apiKeyOwn": "Use my own API key",
+      "apiKeyOwnDesc": "For unlimited usage"
+    },
+    "education": {
+      "title": "Education Mode",
+      "progressLabel": "Progress",
+      "lessonCounter": "Lesson {current} of {total}",
+      "listenButton": "Listen to Raman",
+      "speakingStatus": "Speaking...",
+      "nextButton": "Next Lesson",
+      "previousButton": "Previous",
+      "completeButton": "Complete Education",
+      "backToMenu": "Back to Menu",
+      "stopSpeaking": "Stop Speaking",
+      "speechTiming": "Speech: 7x slower • Pauses: 4x longer",
+      "lessons": [
+        {
+          "title": "Meet Raman",
+          "content": "Hello. I'm Raman. I have dementia. I want to help you understand me.",
+          "thinking": "Let me introduce myself slowly...",
+          "emotion": "calm"
+        },
+        {
+          "title": "Why I Need Time",
+          "content": "When you talk to me. I need time. My brain works slower now. Please wait for me.",
+          "thinking": "Explaining why I'm slow...",
+          "emotion": "thoughtful"
+        },
+        {
+          "title": "One Thing at a Time",
+          "content": "Too many instructions. I get confused. Tell me one thing. Then wait.",
+          "thinking": "Trying to explain overload...",
+          "emotion": "overwhelmed"
+        },
+        {
+          "title": "Don't Interrupt My Thoughts",
+          "content": "Sometimes I stop talking. but I'm still thinking. Please don't jump in. Let me finish.",
+          "thinking": "Finding the right words...",
+          "emotion": "focused"
+        },
+        {
+          "title": "How Words Make Me Feel",
+          "content": "When you say 'Don't forget your medicine'. I feel bad. Instead say, 'Here's your medicine'. I feel good. Same message. Different feeling.",
+          "thinking": "Sharing my emotions...",
+          "emotion": "emotional"
+        }
+      ]
+    },
+    "emotions": {
+      "calm": "😌 Calm",
+      "thoughtful": "🤔 Thoughtful",
+      "overwhelmed": "😵 Overwhelmed",
+      "focused": "🎯 Focused",
+      "emotional": "💙 Sharing feelings"
+    },
+    "voice": {
+      "malePriorityNames": ["alex", "david", "daniel", "tom", "mark"],
+      "testPhrase": "Can you hear this? This is how Raman speaks.",
+      "speechConfig": {
+        "rate": 0.15,
+        "pauseMultiplier": 4,
+        "volume": 0.8,
+        "pitch": 0.6
+      }
+    },
+    "timer": {
+      "speaking": "Speaking...",
+      "pause": "Pause...",
+      "total": "Total:",
+      "complete": "Complete"
+    },
+    "thinking": {
+      "speaking": "Speaking...",
+      "thinking": "Thinking..."
+    },
+    "common": {
+      "loading": "Loading...",
+      "error": "Something went wrong",
+      "retry": "Try Again",
+      "cancel": "Cancel",
+      "save": "Save",
+      "continue": "Continue"
+    }
+  };
+
+  const loadTranslations = async (languageCode) => {
+    setIsLoading(true);
+    try {
+      // For now, just use the hardcoded English translations
+      // Later we'll load from external files
+      if (languageCode === 'en-US') {
+        setTranslations(englishTranslations);
+        setCurrentLanguage(languageCode);
+      }
+    } catch (error) {
+      console.warn(`Failed to load ${languageCode}, using English`);
+      setTranslations(englishTranslations);
+      setCurrentLanguage('en-US');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to get nested object values
+  const getNestedValue = (obj, key) => {
+    return key.split('.').reduce((o, k) => o?.[k], obj);
+  };
+
+  const t = (key, params = {}) => {
+    const value = getNestedValue(translations, key);
+    if (!value) {
+      console.warn(`Translation key "${key}" not found`);
+      return key;
+    }
+    
+    // Handle parameter substitution: "Lesson {current} of {total}"
+    if (typeof value === 'string' && Object.keys(params).length > 0) {
+      return Object.keys(params).reduce((str, param) => {
+        return str.replace(new RegExp(`{${param}}`, 'g'), params[param]);
+      }, value);
+    }
+    
+    return value;
+  };
+
+  const changeLanguage = (newLanguage) => {
+    localStorage.setItem('raman-language', newLanguage);
+    loadTranslations(newLanguage);
+  };
+
+  useEffect(() => {
+    // For now, always load English
+    loadTranslations('en-US');
+  }, []);
+
+  const value = {
+    t,
+    currentLanguage,
+    changeLanguage,
+    isLoading,
+    translations
+  };
+
+  return (
+    <LocalizationContext.Provider value={value}>
+      {children}
+    </LocalizationContext.Provider>
+  );
+};
+
+export const useLocalization = () => {
+  const context = useContext(LocalizationContext);
+  if (!context) {
+    throw new Error('useLocalization must be used within LocalizationProvider');
+  }
+  return context;
+};
