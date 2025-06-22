@@ -24,13 +24,12 @@ const CoachRaman = () => {
   const [brainTimer, setBrainTimer] = useState(0);
   const [brainTimerActive, setBrainTimerActive] = useState(false);
   const [totalCommunicationTime, setTotalCommunicationTime] = useState(0);
-  const [timerPhase, setTimerPhase] = useState(''); // 'speaking', 'pause', 'complete'
-  const [isEducationSpeaking, setIsEducationSpeaking] = useState(false); // Track education vs test audio
+  const [timerPhase, setTimerPhase] = useState('');
+  const [isEducationSpeaking, setIsEducationSpeaking] = useState(false);
   
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Embedded API key (you'll replace this with your actual key)
   const EMBEDDED_API_KEY = 'your-embedded-api-key-here';
 
   const scrollToBottom = () => {
@@ -41,7 +40,6 @@ const CoachRaman = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Brain Timer useEffect
   useEffect(() => {
     let interval;
     if (brainTimerActive) {
@@ -107,16 +105,14 @@ const CoachRaman = () => {
     setIsSpeaking(true);
     setIsEducationSpeaking(isEducation);
     
-    // Start brain timer for speaking only if it's education
     if (isEducation) {
       startBrainTimer('speaking');
     }
     
-    // Clean text - remove ellipses and formatting
     const cleanText = text
-      .replace(/\.\.\./g, '') // Remove ellipses
-      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
-      .replace(/pause/gi, '') // Remove literal "pause" words
+      .replace(/\.\.\./g, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/pause/gi, '')
       .trim();
     
     const getVoiceAndSpeak = () => {
@@ -141,8 +137,6 @@ const CoachRaman = () => {
         ramanVoice = voices.find(voice => voice.lang.startsWith('en'));
       }
       
-      console.log('Raman using voice:', ramanVoice ? ramanVoice.name : 'default');
-      
       const phrases = cleanText.split(/[.!?]+/).filter(phrase => phrase.trim().length > 0);
       
       const speakPhrases = (index) => {
@@ -150,8 +144,11 @@ const CoachRaman = () => {
           setIsSpeaking(false);
           setRamanThinking('');
           setEmotionState('calm');
-          setBrainTimerActive(false);
-          setTimerPhase('complete');
+          if (isEducation) {
+            setTimeout(() => {
+              setTimerPhase('complete');
+            }, 100);
+          }
           return;
         }
         
@@ -161,11 +158,10 @@ const CoachRaman = () => {
           return;
         }
         
-        // Show thinking state before speaking
         setRamanThinking('Speaking...');
         
         const utterance = new SpeechSynthesisUtterance(phrase);
-        utterance.rate = 0.15; // Even slower for dementia
+        utterance.rate = 0.15;
         utterance.pitch = ramanVoice && ramanVoice.name.toLowerCase().includes('female') ? 0.4 : 0.6;
         utterance.volume = 0.8;
         
@@ -177,25 +173,21 @@ const CoachRaman = () => {
           setRamanThinking('Thinking...');
           if (isEducation) setBrainTimerActive(false);
           
-          // Check if more phrases to go
           if (index < phrases.length - 1) {
             if (isEducation) {
               setTimeout(() => {
                 startBrainTimer('pause');
-                // Long pause between phrases (dementia processing time)
                 setTimeout(() => {
                   startBrainTimer('speaking');
                   speakPhrases(index + 1);
-                }, 4000); // Longer 4-second pauses
+                }, 4000);
               }, 100);
             } else {
-              // Regular pause for test audio
               setTimeout(() => {
                 speakPhrases(index + 1);
               }, 4000);
             }
           } else {
-            // Final phrase completed
             setIsSpeaking(false);
             setRamanThinking('');
             setEmotionState('calm');
@@ -211,8 +203,6 @@ const CoachRaman = () => {
           console.error('Speech error');
           setIsSpeaking(false);
           setRamanThinking('');
-          setBrainTimerActive(false);
-          setTimerPhase('');
         };
 
         window.speechSynthesis.speak(utterance);
@@ -254,7 +244,7 @@ const CoachRaman = () => {
     {
       title: "Meet Raman",
       content: "Hello. I'm Raman. I have dementia. I want to help you understand me.",
-      thinking: "Introducing myself slowly...",
+      thinking: "Let me introduce myself slowly...",
       emotion: "calm"
     },
     {
@@ -288,14 +278,13 @@ const CoachRaman = () => {
     setEducationStep(lessonIndex);
     setRamanThinking(lesson.thinking);
     
-    // Reset brain timer for new lesson
     setBrainTimer(0);
     setTotalCommunicationTime(0);
     setTimerPhase('');
     setBrainTimerActive(false);
     
     setTimeout(() => {
-      speakText(lesson.content, lesson.emotion, true); // true for education
+      speakText(lesson.content, lesson.emotion, true);
     }, 1000);
   };
 
@@ -305,38 +294,23 @@ const CoachRaman = () => {
     }
   };
 
-  // Brain Timer Component
   const BrainTimer = () => {
     if (!isEducationSpeaking) return null;
     
     if (timerPhase === 'complete') {
       return (
-        <>
-          <div className="absolute top-2 right-full mr-6">
-            {/* Timer box */}
-            <div className="bg-white border-2 border-gray-300 rounded-lg p-2 shadow-lg">
-              <div className="flex items-center gap-1">
-                <Brain size={20} className="text-blue-600" />
-                <span className="text-xs font-medium text-gray-800">Total:</span>
-                <span className="text-xs font-mono text-blue-600 min-w-[15px]">
-                  {totalCommunicationTime}s
-                </span>
-              </div>
-              <div className="absolute top-2 right-0 transform translate-x-2 w-0 h-0 border-t-3 border-b-3 border-l-3 border-transparent border-l-white"></div>
+        <div className="absolute top-2 right-full mr-6">
+          <div className="bg-white border-2 border-gray-300 rounded-lg p-2 shadow-lg">
+            <div className="flex items-center gap-1">
+              <Brain size={20} className="text-blue-600" />
+              <span className="text-xs font-medium text-gray-800">Total:</span>
+              <span className="text-xs font-mono text-blue-600 min-w-[15px]">
+                {totalCommunicationTime}s
+              </span>
             </div>
+            <div className="absolute top-2 right-0 transform translate-x-2 w-0 h-0 border-t-3 border-b-3 border-l-3 border-transparent border-l-white"></div>
           </div>
-          
-          {/* Comparison box to the right of avatar */}
-          <div className="absolute top-2 left-full ml-6">
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-2 shadow-lg min-w-[140px]">
-              <div className="text-xs text-gray-600">
-                <div>• Speech: 7x slower</div>
-                <div>• Pauses: 4x longer</div>
-              </div>
-              <div className="absolute top-2 left-0 transform -translate-x-2 w-0 h-0 border-t-3 border-b-3 border-r-3 border-transparent border-r-white"></div>
-            </div>
-          </div>
-        </>
+        </div>
       );
     }
     
@@ -370,57 +344,7 @@ const CoachRaman = () => {
           <p className="text-sm text-gray-500">Let's set up your audio experience so you can hear how I really speak.</p>
         </div>
 
-        {/* API Key Selection */}
-        <div className="mb-8">
-          <h3 className="font-semibold text-gray-800 mb-2">Choose your API key option:</h3>
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-            <p className="text-xs text-blue-800">
-             Education mode is free!  I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙
-            </p>
-          </div>
-          <div className="space-y-3">
-            <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input
-                type="radio"
-                checked={useEmbeddedKey}
-                onChange={() => setUseEmbeddedKey(true)}
-                className="mr-3"
-              />
-              <div>
-                <div className="font-medium">Use demo API key (Recommended)</div>
-                <div className="text-sm text-gray-500">Quick start - no setup required</div>
-              </div>
-            </label>
-            
-            <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input
-                type="radio"
-                checked={!useEmbeddedKey}
-                onChange={() => setUseEmbeddedKey(false)}
-                className="mr-3"
-              />
-              <div>
-                <div className="font-medium">Use my own API key</div>
-                <div className="text-sm text-gray-500">For unlimited usage</div>
-              </div>
-            </label>
-          </div>
-
-          {!useEmbeddedKey && (
-            <div className="mt-4">
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Audio Setup */}
-        <div className="space-y-6">
+        <div className="space-y-6 mb-8">
           <div>
             <h3 className="font-semibold text-gray-800 mb-4">Audio Setup</h3>
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
@@ -462,17 +386,65 @@ const CoachRaman = () => {
               </div>
             )}
           </div>
+        </div>
 
-          <button
-            onClick={() => {
-              setSetupComplete(true);
-              setCurrentScreen('welcome');
-            }}
-            disabled={!audioTest}
-            className="w-full px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            Start Learning with Raman
-          </button>
+        <button
+          onClick={() => {
+            setSetupComplete(true);
+            setCurrentScreen('welcome');
+          }}
+          disabled={!audioTest}
+          className="w-full px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors mb-8"
+        >
+          Start Learning with Raman
+        </button>
+
+        <div className="bg-white/60 backdrop-blur-md rounded-xl p-6 shadow-lg border border-white/20">
+          <h3 className="font-semibold text-gray-800 mb-2">Choose your API key option:</h3>
+          <div className="bg-blue-50/70 backdrop-blur-sm border border-blue-200/50 rounded-md p-3 mb-4">
+            <p className="text-xs text-blue-800">
+             Education mode is free!  I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙
+            </p>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center p-4 border border-white/30 rounded-lg cursor-pointer hover:bg-white/30 transition-colors backdrop-blur-sm">
+              <input
+                type="radio"
+                checked={useEmbeddedKey}
+                onChange={() => setUseEmbeddedKey(true)}
+                className="mr-3"
+              />
+              <div>
+                <div className="font-medium">Use demo API key (Recommended)</div>
+                <div className="text-sm text-gray-500">Quick start - no setup required</div>
+              </div>
+            </label>
+            
+            <label className="flex items-center p-4 border border-white/30 rounded-lg cursor-pointer hover:bg-white/30 transition-colors backdrop-blur-sm">
+              <input
+                type="radio"
+                checked={!useEmbeddedKey}
+                onChange={() => setUseEmbeddedKey(false)}
+                className="mr-3"
+              />
+              <div>
+                <div className="font-medium">Use my own API key</div>
+                <div className="text-sm text-gray-500">For unlimited usage</div>
+              </div>
+            </label>
+          </div>
+
+          {!useEmbeddedKey && (
+            <div className="mt-4">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/70 backdrop-blur-sm"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -482,42 +454,16 @@ const CoachRaman = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-6">
-            <Heart className="text-blue-500 mr-3" size={48} />
-            <h1 className="text-2xl font-medium text-gray-800">Raman</h1>
-          </div>
-          <p className="text-xl text-gray-600 mb-4">
-            Learning to communicate with someone who has dementia
-          </p>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            Hello. I'm Raman. I have dementia... but I'm still here. And I want to help you connect with people like me.
-          </p>
-        </div>
-
-        {/* Speaker Icon - Prominent */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <button
-              onClick={() => setCurrentScreen('setup')}
-              className="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <Settings className="mr-2" size={20} />
-              Audio Settings
-            </button>
-            
-            <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
-              <Volume2 className="text-green-600" size={24} />
-              <label className="text-sm font-medium text-green-800">Audio Experience ON</label>
-              <input
-                type="checkbox"
-                checked={voiceEnabled}
-                onChange={(e) => setVoiceEnabled(e.target.checked)}
-                className="rounded"
-              />
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-center mb-2">
+                <Heart className="text-blue-500 mr-3" size={32} />
+                <h2 className="text-2xl font-semibold" style={{ color: '#5A7A4D' }}>Hello. I'm Raman.</h2>
             </div>
-          </div>
+            <p className="text-gray-600">I have dementia, but I'm still here. I want to help you connect with people like me.</p>
+            </div>
         </div>
 
+       
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <div 
             onClick={() => {
@@ -525,31 +471,59 @@ const CoachRaman = () => {
               setCurrentScreen('education');
               setEducationStep(0);
             }}
-            className="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-200"
+            className="bg-white/25 backdrop-blur-xl rounded-3xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 cursor-pointer transform hover:scale-105 hover:-translate-y-2"
+            style={{
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.6)',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.6)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            }}
           >
-            <Brain className="text-blue-500 mb-4" size={32} />
-            <h3 className="text-xl font-semibold mb-2">Education Mode</h3>
-            <p className="text-gray-600 mb-4">
+            <Brain className="text-blue-600 mb-4" size={32} />
+            <h3 className="text-xl font-semibold mb-2 text-gray-800">Education Mode</h3>
+            <p className="text-gray-700 mb-4">
               Watch and listen as Raman teaches you about dementia communication
             </p>
-            <div className="bg-blue-50 p-3 rounded text-sm">
-              <strong>Learn through:</strong>
-              <ul className="mt-2 space-y-1">
+            <div className="bg-white/40 backdrop-blur-sm p-3 rounded-2xl text-sm"
+                 style={{
+                   border: '1px solid rgba(255, 255, 255, 0.3)',
+                   borderTop: '1px solid rgba(255, 255, 255, 0.5)',
+                   borderLeft: '1px solid rgba(255, 255, 255, 0.5)'
+                 }}>
+              <strong className="text-gray-800">Learn through:</strong>
+              <ul className="mt-2 space-y-1 text-gray-700">
                 <li>• Real dementia speech patterns</li>
                 <li>• Visual thinking demonstrations</li>
                 <li>• Interactive lessons</li>
                 <li>• No pressure - just observe</li>
               </ul>
             </div>
+            <div className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-2xl font-medium text-center hover:bg-blue-700 transition-colors"
+                 style={{
+                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                 }}>
+              Start Learning
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg p-6 shadow-lg opacity-50 cursor-not-allowed border-2 border-gray-200">
+          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed"
+               style={{
+                 border: '1px solid rgba(255, 255, 255, 0.2)',
+                 borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+                 borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
+                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+               }}>
             <Users className="text-gray-400 mb-4" size={32} />
             <h3 className="text-xl font-semibold mb-2 text-gray-500">Training Mode</h3>
             <p className="text-gray-500 mb-4">
               Coming soon - Practice conversations with guidance
             </p>
-            <div className="bg-gray-50 p-3 rounded text-sm">
+            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl text-sm"
+                 style={{
+                   border: '1px solid rgba(255, 255, 255, 0.2)'
+                 }}>
               <strong className="text-gray-400">Will include:</strong>
               <ul className="mt-2 space-y-1 text-gray-400">
                 <li>• Real-time feedback</li>
@@ -560,13 +534,22 @@ const CoachRaman = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-6 shadow-lg opacity-50 cursor-not-allowed border-2 border-gray-200">
+          <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-6 shadow-lg opacity-60 cursor-not-allowed"
+               style={{
+                 border: '1px solid rgba(255, 255, 255, 0.2)',
+                 borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+                 borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
+                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+               }}>
             <MessageCircle className="text-gray-400 mb-4" size={32} />
             <h3 className="text-xl font-semibold mb-2 text-gray-500">Live Chat Mode</h3>
             <p className="text-gray-500 mb-4">
               Coming soon - Open conversation with Raman
             </p>
-            <div className="bg-gray-50 p-3 rounded text-sm">
+            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl text-sm"
+                 style={{
+                   border: '1px solid rgba(255, 255, 255, 0.2)'
+                 }}>
               <strong className="text-gray-400">Will include:</strong>
               <ul className="mt-2 space-y-1 text-gray-400">
                 <li>• Specific conversations</li>
@@ -577,6 +560,170 @@ const CoachRaman = () => {
             </div>
           </div>
         </div>
+
+         {/* Audio Setup Card - Single card with all components */}
+        <div className="text-center mb-8">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg opacity-70"
+            style={{
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+            }}>
+          
+            <h3 className="text-lg font-medium text-gray-600 mb-3">Audio Setup</h3>
+            <p className="text-gray-700 mb-8">You'll need to hear how I really speak to understand my experience</p>
+            
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Audio Setup */}
+              <div className="text-center">
+                <Settings className="mx-auto mb-4 text-gray-700" size={30} />
+                <p className="text-gray-600 text-sm mb-4">Configure speakers & microphone</p>
+                <button
+                  onClick={() => setCurrentScreen('setup')}
+                  className="px-4 py-2 bg-white/60 backdrop-blur-sm text-gray-700 rounded-xl hover:bg-white/70 transition-all duration-300 font-medium"
+                  style={{
+                    border: '2px solid rgba(123, 154, 109, 0.7)',
+                    boxShadow: '0 4px 12px rgba(123, 154, 109, 0.2)'
+                  }}
+                >
+                  Setup Audio
+                </button>
+              </div>
+
+              {/* Test Sound */}
+              <div className="text-center">
+                <Volume2 className="mx-auto mb-4 text-blue-600" size={30} />
+                <p className="text-gray-600 text-sm mb-4">Hear how Raman speaks</p>
+                <button
+                  onClick={() => speakText("Can you hear this? This is how Raman speaks.")}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 font-medium"
+                  style={{
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }}
+                >
+                  Test Audio
+                </button>
+              </div>
+
+              {/* Microphone Status */}
+              <div className="text-center">
+                {speechSupported ? (
+                  <>
+                    <CheckCircle className="mx-auto mb-4 text-green-600" size={30} />
+                    <p className="text-gray-600 text-sm mb-4">You can speak during lessons</p>
+                    <div className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-medium"
+                         style={{
+                           border: '2px solid rgba(34, 197, 94, 0.5)'
+                         }}>
+                      ✓ Microphone Ready
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="mx-auto mb-4 text-gray-500" size={40} />
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Typing Only</h4>
+                    <p className="text-gray-600 text-sm mb-4">You can type responses</p>
+                    <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-medium"
+                         style={{
+                           border: '2px solid rgba(156, 163, 175, 0.5)'
+                         }}>
+                      No Mic
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Audio Experience Toggle */}
+            <div className="mt-8 pt-6 border-t-2 border-sage-200/50">
+              <div className="flex items-center justify-center gap-4">
+                <Volume2 className={`${voiceEnabled ? 'text-green-600' : 'text-gray-400'}`} size={24} />
+                <span className="text-lg font-medium text-gray-800">Audio Experience</span>
+                <input
+                  type="checkbox"
+                  checked={voiceEnabled}
+                  onChange={(e) => setVoiceEnabled(e.target.checked)}
+                  className="w-6 h-6 rounded"
+                  style={{
+                    accentColor: '#7B9A6D'
+                  }}
+                />
+                <span className={`text-sm font-medium ${voiceEnabled ? 'text-green-600' : 'text-gray-500'}`}>
+                  {voiceEnabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div className="bg-orange-50/25 backdrop-blur-xl rounded-3xl p-6 shadow-xl"
+             style={{
+               
+                boxShadow: '0 8px 32px rgba(255, 165, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+             }}>
+          <h3 className="font-semibold text-gray-500 mb-2">Choose your API key option:</h3>
+          <div className="bg-gray-100 rounded-2xl p-3 mb-4 opacity-60 cursor-not-allowed">
+               
+            <p className="text-xs text-blue-800">
+             Education mode is free!  I use OpenAI's GPT-4o-mini model for Training and Live Chat modes. If you have your own API key, please use it. It helps keep costs low while I help more people. Thank you. 💙
+            </p>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
+                   style={{
+                     border: '1px solid rgba(255, 255, 255, 0.3)',
+                     borderTop: '1px solid rgba(255, 255, 255, 0.4)',
+                     borderLeft: '1px solid rgba(255, 255, 255, 0.4)',
+                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                   }}>
+              <input
+                type="radio"
+                checked={useEmbeddedKey}
+                onChange={() => setUseEmbeddedKey(true)}
+                className="mr-3"
+              />
+              <div>
+                <div className="font-medium text-gray-800">Use demo API key (Recommended)</div>
+                <div className="text-sm text-gray-600">Quick start - no setup required</div>
+              </div>
+            </label>
+            
+            <label className="flex items-center p-4 rounded-2xl cursor-pointer hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
+                   style={{
+                     border: '1px solid rgba(255, 255, 255, 0.3)',
+                     borderTop: '1px solid rgba(255, 255, 255, 0.4)',
+                     borderLeft: '1px solid rgba(255, 255, 255, 0.4)',
+                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                   }}>
+              <input
+                type="radio"
+                checked={!useEmbeddedKey}
+                onChange={() => setUseEmbeddedKey(false)}
+                className="mr-3"
+              />
+              <div>
+                <div className="font-medium text-gray-800">Use my own API key</div>
+                <div className="text-sm text-gray-600">For unlimited usage</div>
+              </div>
+            </label>
+          </div>
+
+          {!useEmbeddedKey && (
+            <div className="mt-4">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 bg-white/40 backdrop-blur-sm"
+                style={{
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.4)',
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.4)'
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -586,7 +733,6 @@ const CoachRaman = () => {
     
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Header */}
         <div className="bg-white shadow-sm border-b px-4 py-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center">
@@ -616,12 +762,10 @@ const CoachRaman = () => {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center p-4">
+        <div className="flex-1 flex items-center justify-center p-4 pb-6">
           <div className="max-w-4xl w-full">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              {/* Lesson Progress */}
-              <div className="mb-8">
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
+              <div className="mb-6 sm:mb-8">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-gray-500">Progress</span>
                   <span className="text-sm font-medium text-gray-500">
@@ -636,7 +780,6 @@ const CoachRaman = () => {
                 </div>
               </div>
 
-              {/* Raman's Avatar and State */}
               <div className="text-center mb-8">
                 <div className="relative inline-block">
                   <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl transition-colors ${
@@ -649,7 +792,6 @@ const CoachRaman = () => {
                     🧓
                   </div>
                   
-                  {/* Thinking Bubble */}
                   {ramanThinking && (
                     <div className="absolute top-0 left-full ml-4 bg-white border-2 border-gray-200 rounded-lg p-3 shadow-lg">
                       <div className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
@@ -668,15 +810,13 @@ const CoachRaman = () => {
                       <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-white"></div>
                     </div>
                   )}
-
-                  {/* Brain Timer */}
+                  
                   <BrainTimer />
                 </div>
                 
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentLesson.title}</h2>
+                <h2 className="text-2xl font-bold text-teal-700 mb-2">{currentLesson.title}</h2>
                 
-                {/* Emotion Indicator */}
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm mb-3 ${
                   emotionState === 'calm' ? 'bg-blue-100 text-blue-800' :
                   emotionState === 'thoughtful' ? 'bg-yellow-100 text-yellow-800' :
                   emotionState === 'overwhelmed' ? 'bg-red-100 text-red-800' :
@@ -689,31 +829,35 @@ const CoachRaman = () => {
                   {emotionState === 'focused' && '🎯 Focused'}
                   {emotionState === 'emotional' && '💙 Sharing feelings'}
                 </div>
+                
+                <div className="text-sm text-purple-600 font-medium">
+                  Speech: 7x slower • Pauses: 4x longer
+                </div>
               </div>
 
-              {/* Lesson Content */}
-              <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                <p className="text-lg text-gray-800 leading-relaxed text-center">
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <p className="text-lg sm:text-xl text-gray-800 leading-relaxed text-center">
                   {currentLesson.content}
                 </p>
               </div>
 
-              {/* Controls */}
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => startEducationLesson(educationStep)}
-                  disabled={isSpeaking}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                >
-                  <Volume2 size={20} />
-                  {isSpeaking ? 'Speaking...' : 'Listen to Raman'}
-                </button>
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => startEducationLesson(educationStep)}
+                    disabled={isSpeaking}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors text-lg font-medium"
+                  >
+                    <Volume2 size={24} />
+                    {isSpeaking ? 'Speaking...' : 'Listen to Raman'}
+                  </button>
+                </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 justify-center flex-wrap">
                   {educationStep > 0 && (
                     <button
                       onClick={() => startEducationLesson(educationStep - 1)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
                     >
                       Previous
                     </button>
@@ -722,14 +866,14 @@ const CoachRaman = () => {
                   {educationStep < educationLessons.length - 1 ? (
                     <button
                       onClick={nextEducationStep}
-                      className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                      className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium"
                     >
                       Next Lesson
                     </button>
                   ) : (
                     <button
                       onClick={() => setCurrentScreen('welcome')}
-                      className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                      className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium"
                     >
                       Complete Education
                     </button>
